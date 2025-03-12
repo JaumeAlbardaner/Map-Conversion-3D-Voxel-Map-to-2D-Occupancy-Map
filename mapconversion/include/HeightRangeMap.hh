@@ -39,8 +39,9 @@ public:
   // remove all ranges that are shorter than minSize at x y position
   void removeFreeRanges(int x, int y, double minSize) {
     for (int i = 0; i < free[x][y].size(); i++) {
-      if (free[x][y][i].top - free[x][y][i].bottom > minSize)
+      if (occupied[x][y].size() < 2 || free[x][y][i].top - free[x][y][i].bottom > minSize)
         continue;
+      occupied[x][y].push_back(free[x][y][i]);
       free[x][y].erase(free[x][y].begin() + i);
       i--;
     }
