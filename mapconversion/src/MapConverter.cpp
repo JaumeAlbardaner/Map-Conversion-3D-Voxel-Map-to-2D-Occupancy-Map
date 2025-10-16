@@ -14,7 +14,7 @@ MapConverter::MapConverter(double resolution, int slopeEstimationSize,
 
 MapConverter::~MapConverter() {}
 
-void MapConverter::updateMap(vector<voxel> vMap, vector<double> minMax) {
+void MapConverter::updateMap(vector<voxel> vMap, vector<double> minMax, double curr_height) {
   if (vMap.size() == 0)
     return;
   for (double mM : minMax)
@@ -51,7 +51,7 @@ void MapConverter::updateMap(vector<voxel> vMap, vector<double> minMax) {
   // remove free space that is smaller than robots is safety margin
   for (int x = 1; x < xSize - 1; x++) {
     for (int y = 1; y < ySize - 1; y++) {
-      hMap.removeFreeRanges(x, y, minZ);
+      hMap.removeFreeRanges(x, y, minZ, curr_height);
       int mapValue = 0;
       if (hMap.free[x][y].size() == 0) {
         hMap.posMap[x][y].x = x * resolution + minMax[0];

@@ -18,6 +18,9 @@
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp/utilities.hpp>
 #include <rmw/types.h>
+#include <tf2_ros/buffer.h>
+#include <tf2_ros/transform_listener.h>
+#include <geometry_msgs/msg/transform_stamped.hpp>
 #include <vector>
 
 using namespace std;
@@ -52,6 +55,9 @@ private:
   bool sub_qos_transient_local;
   bool pub_qos_reliable;
   bool pub_qos_transient_local;
+  std::shared_ptr<tf2_ros::Buffer> tfBuffer;
+  std::shared_ptr<tf2_ros::TransformListener> tfListener;
+  double curr_height;
 
 public:
   MapToMap() : Node("map_conversion") {
@@ -111,12 +117,16 @@ public:
         "/slopeMap", pub_qos_profile);
     OcMap = NULL;
     MC = NULL;
+
+    tfBuffer = std::make_shared<tf2_ros::Buffer>(this->get_clock());
+    tfListener = std::make_shared<tf2_ros::TransformListener>(*tfBuffer);
+    curr_height = 0.0;
   }
 
   ~MapToMap() {}
 
   void mapCallback(octomap_msgs::msg::Octomap msg) {
-    // Set resulution
+    // Set resolution
     if (MC == NULL) {
       resolution = msg.resolution;
       MC = new MapConverter(resolution, slopeEstimationSize, minimumZ,
@@ -147,6 +157,16 @@ public:
     }
     minMax[4] = min_z;
     minMax[5] = max_z;
+
+    // Update curr_height using TF transform
+    try {
+      geometry_msgs::msg::TransformStamped transformStamped =
+          tfBuffer->lookupTransform("map", "base_link", tf2::TimePointZero);
+      curr_height = transformStamped.transform.translation.z;
+    } catch (tf2::TransformException &ex) {
+      RCLCPP_WARN(this->get_logger(), "Could not transform map to base_link: %s", ex.what());
+      return;
+    }
 
     update2Dmap(minMax);
     pub();
@@ -217,7 +237,7 @@ public:
         return;
 
     vector<voxel> voxelList;
-    // get all free and occupide voxels in boundign box
+    // get all free and occupied voxels in bounding box
     octomap::point3d minPoint(minMax[0], minMax[2], minMax[4]);
     octomap::point3d maxPoint(minMax[1], minMax[3], minMax[5]);
     for (auto it = OcMap->begin_leafs_bbx(minPoint, maxPoint),
@@ -231,7 +251,7 @@ public:
       v.occupied = OcMap->isNodeOccupied(*it);
       voxelList.push_back(v);
     }
-    MC->updateMap(voxelList, minMax);
+    MC->updateMap(voxelList, minMax, curr_height);
   }
 
   void pub() {

@@ -12,7 +12,7 @@ public:
                int minimumOccupancy);
   ~MapConverter();
   // update global map in region of the voxels given
-  void updateMap(vector<voxel> vMap, vector<double> minMax);
+  void updateMap(vector<voxel> vMap, vector<double> minMax, double curr_height);
   // get the min max values in x and y for given voxel list agins map frame.
   // Returns vector with <minX, maxX, minY, maxY, minZ, maxZ>
   vector<double> minMaxVoxel(vector<voxel> list);

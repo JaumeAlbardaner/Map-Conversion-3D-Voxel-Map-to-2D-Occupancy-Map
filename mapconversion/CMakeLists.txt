@@ -20,6 +20,10 @@ find_package(octomap REQUIRED)
 find_package(octomap_ros REQUIRED)
 find_package(octomap_msgs REQUIRED)
 
+# Find TF2 dependencies
+find_package(tf2 REQUIRED)
+find_package(tf2_ros REQUIRED)
+
 # Include directories
 include_directories(
   include
@@ -57,6 +61,8 @@ ament_target_dependencies(map_conversion_oct_node
   octomap_ros
   octomap
   octomap_msgs
+  tf2_ros
+  tf2
 )
 
 # Install executables
