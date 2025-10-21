@@ -39,19 +39,14 @@ public:
   // remove all ranges that are shorter than minSize at x y position
   void removeFreeRanges(int x, int y, double minSize, double curr_height) {
     for (int i = 0; i < free[x][y].size(); i++) {
-      double rangeTop = std::min(free[x][y][i].top, curr_height + 1.5 * minSize);
-      double rangeBottom = std::max(free[x][y][i].bottom, curr_height - 1.5 * minSize);
-      if (occupied[x][y].size() < 2 || rangeTop - rangeBottom < minSize) {
-        // free[x][y].erase(free[x][y].begin() + i);
-        // i--;
+      double rangeTop = std::min(free[x][y][i].top, curr_height + minSize);
+      double rangeBottom = std::max(free[x][y][i].bottom, curr_height - minSize);      
+      if (occupied[x][y].size() < 2 || rangeTop - rangeBottom > minSize)
         continue;
-      }
-      occupied[x][y].push_back(free[x][y][i]);
       free[x][y].erase(free[x][y].begin() + i);
       i--;
     }
   }
-
   // returns the occupation level of a cell compared to a free heightRange in
   // range 0-100
   int getOccupation(int x, int y, int index, int minOcc) {

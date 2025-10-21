@@ -58,6 +58,8 @@ private:
   std::shared_ptr<tf2_ros::Buffer> tfBuffer;
   std::shared_ptr<tf2_ros::TransformListener> tfListener;
   double curr_height;
+  double curr_x; // Add this
+  double curr_y; // Add this
 
 public:
   MapToMap() : Node("map_conversion") {
@@ -121,6 +123,8 @@ public:
     tfBuffer = std::make_shared<tf2_ros::Buffer>(this->get_clock());
     tfListener = std::make_shared<tf2_ros::TransformListener>(*tfBuffer);
     curr_height = 0.0;
+    curr_x = 0.0; // Initialize
+    curr_y = 0.0; // Initialize
   }
 
   ~MapToMap() {}
@@ -158,13 +162,15 @@ public:
     minMax[4] = min_z;
     minMax[5] = max_z;
 
-    // Update curr_height using TF transform
+    // Update curr_height and current x, y using TF transform
     try {
       geometry_msgs::msg::TransformStamped transformStamped =
-          tfBuffer->lookupTransform("map", "base_link", tf2::TimePointZero);
+          tfBuffer->lookupTransform("map", "b2/base_link", tf2::TimePointZero);
       curr_height = transformStamped.transform.translation.z;
+      curr_x = transformStamped.transform.translation.x; // Store x
+      curr_y = transformStamped.transform.translation.y; // Store y
     } catch (tf2::TransformException &ex) {
-      RCLCPP_WARN(this->get_logger(), "Could not transform map to base_link: %s", ex.what());
+      RCLCPP_WARN(this->get_logger(), "Could not transform map to b2/base_link: %s", ex.what());
       return;
     }
 
@@ -275,6 +281,8 @@ public:
     heightMsg.bottom.resize(mapMsg.info.width * mapMsg.info.height);
     slopeMsg.slope.resize(mapMsg.info.width * mapMsg.info.height);
 
+    double exclusion_radius = 0.7; // meters
+
     // pub map for UGV
     if (pubMapUGV->get_subscription_count() != 0 || pub_qos_transient_local) {
       if (isinf(slopeMax)) {
@@ -290,7 +298,16 @@ public:
         for (int x = 0; x < MC->map.sizeX(); x++) {
           int index = x + y * MC->map.sizeX();
 
-          mapMsg.data[index] = MC->map.get(x, y, slopeMax);
+          // Compute real-world coordinates of the cell center
+          double wx = MC->map.offsetX() + (x + 0.5) * MC->map.getResulution();
+          double wy = MC->map.offsetY() + (y + 0.5) * MC->map.getResulution();
+
+          // If within exclusion radius, set to grey (-1)
+          if (std::hypot(wx - curr_x, wy - curr_y) < exclusion_radius) {
+            mapMsg.data[index] = 0;
+          } else {
+            mapMsg.data[index] = MC->map.get(x, y, slopeMax);
+          }
         }
       }
       pubMapUGV->publish(mapMsg);
